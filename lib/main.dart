@@ -29,97 +29,80 @@ class HomePage extends StatefulWidget {
 }
 
 class _HomePageState extends State<HomePage> {
-  late String stringResponse = ""; // Initialize with an empty string
-  Map<String, dynamic>? mapResponse; // Use nullable type
-  Map<String, dynamic>? dataResponse;
-  List listResponse = [];
+  late Future<List<dynamic>> futureListResponse;
 
-  Future<void> apiCall() async {
-    try {
-      final response =
-          await http.get(Uri.parse("https://reqres.in/api/users?page=2"));
-      if (response.statusCode == 200) {
-        setState(() {
-          // stringResponse = response.body;
-          mapResponse = jsonDecode(response.body) as Map<String, dynamic>;
-          listResponse = mapResponse!['data'];
-        });
-      }
-    } catch (e) {
-      print("Error: $e");
+  Future<List<dynamic>> apiCall() async {
+    final response =
+    await http.get(Uri.parse("https://reqres.in/api/users?page=2"));
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body)['data'];
+    } else {
+      throw Exception('Failed to load data');
     }
   }
 
   @override
   void initState() {
-    apiCall();
     super.initState();
+    // Initialize the Future in initState
+    futureListResponse = apiCall();
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text("API Learning"),
+        title: const Text("Profile Details"),
         centerTitle: true,
       ),
-      body: ListView.builder(
-        itemBuilder: (context, index) {
-          return Container(
-            height: 120,
-            padding: EdgeInsets.all(2),
-            child: Card(
-              child: Row(
-
-                children: [
-                  Image.network(listResponse[index]['avatar']),
-                  Expanded(
-                    child: Container(
-                      padding: EdgeInsets.all(5),
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                        children: [
-                          Text(listResponse[index]['first_name']),
-                          Text(listResponse[index]['last_name']),
-                          Text(listResponse[index]['email'])
-                        ],
-                      ),
+      body: FutureBuilder<List<dynamic>>(
+        future: futureListResponse,
+        builder: (context, snapshot) {
+          if (snapshot.connectionState == ConnectionState.waiting) {
+            return Center(
+              child: CircularProgressIndicator(),
+            );
+          } else if (snapshot.hasError) {
+            return Center(
+              child: Text('Error: ${snapshot.error}'),
+            );
+          } else if (!snapshot.hasData || snapshot.data!.isEmpty) {
+            return Center(
+              child: Text('No data available'),
+            );
+          } else {
+            return ListView.builder(
+              itemBuilder: (context, index) {
+                return Container(
+                  height: 120,
+                  padding: EdgeInsets.all(2),
+                  child: Card(
+                    child: Row(
+                      children: [
+                        Image.network(snapshot.data![index]['avatar']),
+                        Expanded(
+                          child: Container(
+                            padding: EdgeInsets.all(5),
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                              children: [
+                                Text(snapshot.data![index]['first_name']),
+                                Text(snapshot.data![index]['last_name']),
+                                Text(snapshot.data![index]['email']),
+                              ],
+                            ),
+                          ),
+                        )
+                      ],
                     ),
-                  )
-                ],
-              ),
-            ),
-          );
-          //   Container(
-          //   margin: EdgeInsets.only(top: 30),
-          //   // child: Column(
-          //   //   children: [
-          //   //     // Image.network(listResponse[index]['avatar']),
-          //   //     // Text(listResponse[index]['first_name']),
-          //   //     // Text(listResponse[index]['last_name']),
-          //   //     // Text(listResponse[index]['email'])
-          //   //   ],
-          //   // ),
-          // );
+                  ),
+                );
+              },
+              itemCount: snapshot.data!.length,
+            );
+          }
         },
-        itemCount: listResponse.length,
       ),
-      // Center(
-      //   child: Container(
-      //     height: 300,
-      //     width: 300,
-      //     decoration: BoxDecoration(
-      //         color: Colors.blue, borderRadius: BorderRadius.circular(20)),
-      //     child: Center(
-      //       // child:  mapResponse==null? Text("Data is loading"): Text(mapResponse!['data'].toString())
-      //       child: listResponse == null
-      //           ? Container()
-      //           : Text(
-      //         listResponse![2].toString(),
-      //             ),
-      //     ),
-      //   ),
-      // ),
     );
   }
 }
